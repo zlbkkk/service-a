@@ -52,7 +52,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderDTO getOrderById(Long orderId) {
         // 模拟从数据库获取订单
-        return new OrderDTO(orderId, 1L, "ORD-12345", new BigDecimal("99.99"));
+        OrderDTO order = new OrderDTO(orderId, 1L, "ORD-12345", new BigDecimal("99.99"));
+        // 新增：设置订单产品名称和状态
+        order.setProductName("Premium Product");
+        order.setStatus(1); // 1 = 已支付
+        return order;
     }
 
     @Override

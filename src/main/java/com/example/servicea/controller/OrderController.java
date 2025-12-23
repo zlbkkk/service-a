@@ -48,4 +48,28 @@ public class OrderController {
     public boolean cancelOrder(@PathVariable Long orderId) {
         return orderService.cancelOrder(orderId);
     }
+
+    /**
+     * 获取订单状态描述
+     * 新增接口：返回订单的状态文本描述
+     */
+    @GetMapping("/{orderId}/status-text")
+    public String getOrderStatusText(@PathVariable Long orderId) {
+        OrderDTO order = orderService.getOrderById(orderId);
+        if (order == null) {
+            return "订单不存在";
+        }
+        
+        // 根据状态码返回中文描述
+        switch (order.getStatus()) {
+            case 0:
+                return "待支付";
+            case 1:
+                return "已支付";
+            case 2:
+                return "已取消";
+            default:
+                return "未知状态";
+        }
+    }
 }

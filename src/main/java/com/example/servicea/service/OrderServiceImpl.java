@@ -97,4 +97,32 @@ public class OrderServiceImpl implements OrderService {
     public boolean cancelOrder(Long orderId) {
         return updateOrderStatus(orderId, 2); // 2 = 已取消
     }
+    
+    /**
+     * 获取订单状态文本描述
+     * 这个方法会被 service-b 通过 Dubbo RPC 调用
+     */
+    @Override
+    public String getOrderStatusText(Long orderId) {
+        OrderDTO order = getOrderById(orderId);
+        if (order == null) {
+            return "订单不存在";
+        }
+        
+        // 根据状态码返回中文描述
+        switch (order.getStatus()) {
+            case 0:
+                return "待支付";
+            case 1:
+                return "已支付";
+            case 2:
+                return "已取消";
+            case 3:
+                return "已发货";
+            case 4:
+                return "已完成";
+            default:
+                return "未知状态";
+        }
+    }
 }

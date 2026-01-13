@@ -108,4 +108,65 @@ public class OrderController {
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
     }
+    
+    /**
+     * 获取订单汇总信息
+     * 前端UI测试：模拟前端项目 beehive-order-finance-frontend 的 getOrderSummary 调用
+     * 前端页面：资产管理 > 订单管理 (orderManage.vue)
+     * 前端调用：orderApi.ofOrderController.getOrderSummary()
+     */
+    @PostMapping("/summary")
+    public OrderSummaryResponse getOrderSummary(@RequestBody OrderSummaryRequest request) {
+        // 模拟查询订单汇总数据
+        OrderSummaryResponse response = new OrderSummaryResponse();
+        response.setSumCount(100);
+        response.setSumAmount(new BigDecimal("1000000.00"));
+        response.setApplySumCount(50);
+        response.setApplySumAmount(new BigDecimal("500000.00"));
+        return response;
+    }
+    
+    /**
+     * 订单汇总请求对象
+     */
+    public static class OrderSummaryRequest {
+        private String fuzzySourceOrderNo;
+        private Long buyerCompanyId;
+        private Long sellerCompanyId;
+        private String fuzzyContractNo;
+        private String queryStartDay;
+        private String queryEndDay;
+        
+        public String getFuzzySourceOrderNo() { return fuzzySourceOrderNo; }
+        public void setFuzzySourceOrderNo(String fuzzySourceOrderNo) { this.fuzzySourceOrderNo = fuzzySourceOrderNo; }
+        public Long getBuyerCompanyId() { return buyerCompanyId; }
+        public void setBuyerCompanyId(Long buyerCompanyId) { this.buyerCompanyId = buyerCompanyId; }
+        public Long getSellerCompanyId() { return sellerCompanyId; }
+        public void setSellerCompanyId(Long sellerCompanyId) { this.sellerCompanyId = sellerCompanyId; }
+        public String getFuzzyContractNo() { return fuzzyContractNo; }
+        public void setFuzzyContractNo(String fuzzyContractNo) { this.fuzzyContractNo = fuzzyContractNo; }
+        public String getQueryStartDay() { return queryStartDay; }
+        public void setQueryStartDay(String queryStartDay) { this.queryStartDay = queryStartDay; }
+        public String getQueryEndDay() { return queryEndDay; }
+        public void setQueryEndDay(String queryEndDay) { this.queryEndDay = queryEndDay; }
+    }
+    
+    /**
+     * 订单汇总响应对象
+     */
+    public static class OrderSummaryResponse {
+        private Integer sumCount;
+        private BigDecimal sumAmount;
+        private Integer applySumCount;
+        private BigDecimal applySumAmount;
+        
+        public Integer getSumCount() { return sumCount; }
+        public void setSumCount(Integer sumCount) { this.sumCount = sumCount; }
+        public BigDecimal getSumAmount() { return sumAmount; }
+        public void setSumAmount(BigDecimal sumAmount) { this.sumAmount = sumAmount; }
+        public Integer getApplySumCount() { return applySumCount; }
+        public void setApplySumCount(Integer applySumCount) { this.applySumCount = applySumCount; }
+        public BigDecimal getApplySumAmount() { return applySumAmount; }
+        public void setApplySumAmount(BigDecimal applySumAmount) { this.applySumAmount = applySumAmount; }
+    }
 }

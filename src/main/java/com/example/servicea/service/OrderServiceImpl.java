@@ -170,6 +170,12 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 获取订单摘要信息（用于测试 Dubbo RPC 调用）
      * 这个方法会被 service-b 通过 Dubbo RPC 调用
+     * 
+     * 修改说明：
+     * 1. 增加订单产品信息
+     * 2. 增加订单创建时间
+     * 3. 增加订单支付时间（如果已支付）
+     * 4. 返回更详细的格式化字符串
      */
     @Override
     public String getOrderSummary(Long orderId) {
@@ -180,12 +186,22 @@ public class OrderServiceImpl implements OrderService {
         
         String statusText = getOrderStatusText(orderId);
         
-        // 返回简化的摘要信息
+        // 获取订单产品名称
+        String productName = order.getProductName() != null ? order.getProductName() : "未知商品";
+        
+        // 模拟创建时间和支付时间
+        String createTime = "2026-01-14 10:30:00";
+        String payTime = order.getStatus() == 1 ? "2026-01-14 10:35:00" : "未支付";
+        
+        // 返回详细的摘要信息（新增了产品名称、创建时间、支付时间）
         return String.format(
-            "%s-¥%.2f-%s",
+            "订单号:%s|商品:%s|金额:¥%.2f|状态:%s|创建时间:%s|支付时间:%s",
             order.getOrderNumber(),
+            productName,
             order.getTotalAmount(),
-            statusText
+            statusText,
+            createTime,
+            payTime
         );
     }
     

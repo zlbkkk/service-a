@@ -425,15 +425,7 @@ public class OrderController {
     }
     
     /**
-     * 获取订单详细报告
-     * 前端UI测试：模拟前端项目 beehive-order-finance-frontend 的 getOrderDetailReport 调用
-     * 前端页面：资产管理 > 订单报告 (orderReport.vue)
-     * 前端调用：orderApi.ofOrderController.getOrderDetailReport()
-     * 
-     * 新增接口说明：
-     * 1. 提供订单详细报告数据，包含订单明细、客户信息、支付信息等
-     * 2. 支持按订单ID查询完整的订单报告
-     * 3. 返回包含订单全生命周期的详细信息
+     
      */
     @GetMapping("/{orderId}/detail-report")
     public OrderDetailReportResponse getOrderDetailReport(@PathVariable Long orderId) {

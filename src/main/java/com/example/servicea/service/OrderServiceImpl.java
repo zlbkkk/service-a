@@ -1,11 +1,16 @@
 package com.example.servicea.service;
 
+import com.example.common.constant.QueueConstant;
 import com.example.common.dto.OrderDTO;
+import com.example.common.dto.OrderEventDTO;
 import com.example.common.dto.UserDTO;
 import com.example.common.service.OrderService;
 import com.example.servicea.client.NotificationClient;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -17,6 +22,7 @@ import java.util.UUID;
  * 实现 common-api 中的 OrderService 接口
  * 并调用 service-b 发送订单通知
  */
+@Slf4j
 @Service
 public class OrderServiceImpl implements OrderService {
 
@@ -25,6 +31,12 @@ public class OrderServiceImpl implements OrderService {
     
     @Autowired
     private UserServiceImpl userService;
+    
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+    
+    @Value("${spring.rabbitmq.template.exchange:order.exchange}")
+    private String exchangeName;
 
     @Override
     public OrderDTO createOrder(Long userId, String productName, BigDecimal amount) {
@@ -45,6 +57,9 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception e) {
             System.err.println("Failed to send order notification: " + e.getMessage());
         }
+        
+        // RabbitMQ 消息发送: 发送订单创建事件到消息队列
+        sendOrderEventAsync(order.getId(), orderNumber, userId, "CREATED", amount.doubleValue());
         
         return order;
     }
@@ -87,6 +102,10 @@ public class OrderServiceImpl implements OrderService {
             } catch (Exception e) {
                 System.err.println("Failed to send status update notification: " + e.getMessage());
             }
+            
+            // RabbitMQ 消息发送: 发送订单状态变更事件
+            String eventType = status == 1 ? "PAID" : (status == 2 ? "CANCELLED" : "STATUS_UPDATED");
+            sendOrderEventAsync(orderId, order.getOrderNumber(), order.getUserId(), eventType, order.getTotalAmount().doubleValue());
             
             return true;
         }
@@ -168,5 +187,38 @@ public class OrderServiceImpl implements OrderService {
             order.getTotalAmount(),
             statusText
         );
+    }
+    
+    /**
+     * 异步发送订单事件消息到 RabbitMQ
+     * 模拟真实项目中的消息队列使用场景
+     * 
+     * @param orderId 订单ID
+     * @param orderNo 订单编号
+     * @param userId 用户ID
+     * @param eventType 事件类型
+     * @param amount 订单金额
+     */
+    private void sendOrderEventAsync(Long orderId, String orderNo, Long userId, String eventType, Double amount) {
+        log.info("发送订单事件消息，订单编号：{}, 事件类型：{}", orderNo, eventType);
+        
+        OrderEventDTO eventDTO = OrderEventDTO.builder()
+                .orderId(orderId)
+                .orderNo(orderNo)
+                .userId(userId)
+                .orderStatus(eventType)
+                .amount(amount)
+                .eventType(eventType)
+                .timestamp(System.currentTimeMillis())
+                .build();
+        
+        // 发送消息到 RabbitMQ
+        rabbitTemplate.convertAndSend(
+                exchangeName, 
+                QueueConstant.ORDER_EVENT_KEY, 
+                eventDTO
+        );
+        
+        log.info("订单事件消息发送成功，订单编号：{}, 事件类型：{}", orderNo, eventType);
     }
 }

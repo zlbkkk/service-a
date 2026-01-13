@@ -147,4 +147,26 @@ public class OrderServiceImpl implements OrderService {
             statusText
         );
     }
+    
+    /**
+     * 获取订单摘要信息（用于测试 Dubbo RPC 调用）
+     * 这个方法会被 service-b 通过 Dubbo RPC 调用
+     */
+    @Override
+    public String getOrderSummary(Long orderId) {
+        OrderDTO order = getOrderById(orderId);
+        if (order == null) {
+            return "订单不存在";
+        }
+        
+        String statusText = getOrderStatusText(orderId);
+        
+        // 返回简化的摘要信息
+        return String.format(
+            "%s-¥%.2f-%s",
+            order.getOrderNumber(),
+            order.getTotalAmount(),
+            statusText
+        );
+    }
 }

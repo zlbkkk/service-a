@@ -18,23 +18,63 @@ public class OfOrderController {
      */
     @PostMapping("/page")
     public Result pageOrder(@RequestBody PageRequest request) {
+        // 参数校验
+        if (request.getCurrent() == null || request.getCurrent() < 1) {
+            return Result.error("页码不能为空且必须大于0");
+        }
+        if (request.getSize() == null || request.getSize() < 1 || request.getSize() > 100) {
+            return Result.error("每页大小必须在1-100之间");
+        }
+        
+        // 获取查询条件
+        Map<String, Object> queryCondition = request.getQueryCondition();
+        String fuzzySourceOrderNo = queryCondition != null ? (String) queryCondition.get("fuzzySourceOrderNo") : null;
+        String buyerCompanyId = queryCondition != null ? (String) queryCondition.get("buyerCompanyId") : null;
+        String sellerCompanyId = queryCondition != null ? (String) queryCondition.get("sellerCompanyId") : null;
+        List<String> tradeStageList = queryCondition != null ? (List<String>) queryCondition.get("tradeStageList") : null;
+        
         // 模拟分页数据
         Map<String, Object> result = new HashMap<>();
         List<Map<String, Object>> records = new ArrayList<>();
         
-        // 模拟订单数据
+        // 模拟订单数据（根据查询条件过滤）
+        int totalCount = 100; // 总记录数
+        int startIndex = (request.getCurrent() - 1) * request.getSize();
+        
         for (int i = 1; i <= request.getSize(); i++) {
+            int orderIndex = startIndex + i;
+            if (orderIndex > totalCount) break;
+            
             Map<String, Object> order = new HashMap<>();
-            order.put("id", "ORDER_" + i);
-            order.put("sourceOrderNo", "ORD-2024-" + String.format("%04d", i));
-            order.put("orderName", "测试订单" + i);
-            order.put("amount", 100000.00 + i * 1000);
-            order.put("financedAmount", 50000.00 + i * 500);
-            order.put("tradeStage", "ORDER");
-            order.put("buyerCompanyName", "测试买方企业" + i);
-            order.put("sellerCompanyName", "测试卖方企业" + i);
-            order.put("contractNo", "CONTRACT-" + i);
-            order.put("contractName", "测试合同" + i);
+            String orderNo = "ORD-2024-" + String.format("%04d", orderIndex);
+            
+            // 模拟订单编号过滤
+            if (fuzzySourceOrderNo != null && !fuzzySourceOrderNo.isEmpty()) {
+                if (!orderNo.contains(fuzzySourceOrderNo)) {
+                    continue;
+                }
+            }
+            
+            // 确定交易阶段（循环使用三种状态）
+            String tradeStage = orderIndex % 3 == 0 ? "INVOICE" : (orderIndex % 3 == 1 ? "ORDER" : "ARRIVAL");
+            
+            // 模拟交易阶段过滤
+            if (tradeStageList != null && !tradeStageList.isEmpty()) {
+                if (!tradeStageList.contains(tradeStage)) {
+                    continue;
+                }
+            }
+            
+            order.put("id", "ORDER_" + orderIndex);
+            order.put("sourceOrderNo", orderNo);
+            order.put("orderName", "测试订单" + orderIndex);
+            order.put("amount", 100000.00 + orderIndex * 1000);
+            order.put("financedAmount", 50000.00 + orderIndex * 500);
+            order.put("tradeStage", tradeStage);
+            order.put("buyerCompanyName", "测试买方企业" + (orderIndex % 5 + 1));
+            order.put("sellerCompanyName", "测试卖方企业" + (orderIndex % 5 + 1));
+            order.put("contractNo", "CONTRACT-" + orderIndex);
+            order.put("contractName", "测试合同" + orderIndex);
             order.put("contractSignDate", "2024-01-15");
             order.put("contractAmount", 200000.00);
             order.put("dueAmount", 50000.00);
@@ -44,12 +84,12 @@ public class OfOrderController {
             order.put("expireDate", "2024-12-31");
             order.put("commitUserName", "张三");
             order.put("updateTime", "2024-01-15 10:30:00");
-            order.put("isCanDel", "Y");
+            order.put("isCanDel", orderIndex % 2 == 0 ? "Y" : "N"); // 偶数订单可删除
             records.add(order);
         }
         
         result.put("records", records);
-        result.put("total", 100);
+        result.put("total", totalCount);
         result.put("current", request.getCurrent());
         result.put("size", request.getSize());
         
@@ -139,6 +179,14 @@ public class OfOrderController {
             result.code = 200;
             result.message = "success";
             result.data = data;
+            return result;
+        }
+        
+        public static Result error(String message) {
+            Result result = new Result();
+            result.code = 400;
+            result.message = message;
+            result.data = null;
             return result;
         }
 

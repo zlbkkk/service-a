@@ -11,9 +11,12 @@ import java.util.List;
 /**
  * 订单控制器
  * 提供订单相关的 REST API
+ * 
+ * 注意：为了与前端项目 beehive-order-finance-frontend 对接
+ * 使用真实的 API 路径：/order-scfPc-web/check
  */
 @RestController
-@RequestMapping("/api/orders")
+@RequestMapping("/order-scfPc-web/check")
 public class OrderController {
 
     @Autowired
@@ -425,148 +428,65 @@ public class OrderController {
     }
     
     /**
+<<<<<<< HEAD
      
+=======
+     * 获取审核状态（台账）
+     * 前端UI测试：模拟前端项目 beehive-order-finance-frontend 的真实 API 调用
+     * 前端页面：融资还款、还款管理、付款管理等页面
+     * 前端调用：checkApi.getMainFlowStatusByCompanyTypeAndTabName(query)
+     * 前端完整路径：POST /order-scfPc-web/check/getMainFlowStatusByCompanyTypeAndTabName
+     * 
+     * 新增接口说明：
+     * 1. 根据公司类型和Tab名称获取主流程审核状态
+     * 2. 用于台账页面的审核状态筛选
+     * 3. 返回审核状态列表
+>>>>>>> 4e695f3 (feat: 新增审核状态查询接口 - 对接前端 beehive-order-finance-frontend 的 checkApi.getMainFlowStatusByCompanyTypeAndTabName)
      */
-    @GetMapping("/{orderId}/detail-report")
-    public OrderDetailReportResponse getOrderDetailReport(@PathVariable Long orderId) {
-        // 1. 参数验证
-        if (orderId == null || orderId <= 0) {
-            throw new IllegalArgumentException("订单ID不能为空或无效");
-        }
+    @PostMapping("/getMainFlowStatusByCompanyTypeAndTabName")
+    public List<CheckStatusResponse> getMainFlowStatusByCompanyTypeAndTabName(
+            @RequestParam(required = false) String companyType,
+            @RequestParam(required = false) String tabName) {
         
-        // 2. 查询订单基础信息
-        OrderDTO order = orderService.getOrderById(orderId);
-        if (order == null) {
-            throw new IllegalArgumentException("订单不存在，订单ID: " + orderId);
-        }
+        // 模拟返回审核状态列表
+        List<CheckStatusResponse> statusList = new java.util.ArrayList<>();
         
-        // 3. 构建详细报告
-        OrderDetailReportResponse response = new OrderDetailReportResponse();
+        // 添加常见的审核状态
+        statusList.add(new CheckStatusResponse("PENDING", "待审核", 1));
+        statusList.add(new CheckStatusResponse("APPROVED", "已通过", 2));
+        statusList.add(new CheckStatusResponse("REJECTED", "已拒绝", 3));
+        statusList.add(new CheckStatusResponse("PROCESSING", "审核中", 4));
         
-        // 基础信息
-        response.setOrderId(order.getOrderId());
-        response.setUserId(order.getUserId());
-        response.setProductName(order.getProductName());
-        response.setAmount(order.getAmount());
-        response.setStatus(order.getStatus());
-        response.setCreateTime(order.getCreateTime());
+        // 记录日志
+        System.out.println("获取审核状态 - 公司类型: " + companyType + 
+                         ", Tab名称: " + tabName + 
+                         ", 返回状态数: " + statusList.size());
         
-        // 状态描述
-        String statusText;
-        switch (order.getStatus()) {
-            case 0:
-                statusText = "待支付";
-                break;
-            case 1:
-                statusText = "已支付";
-                break;
-            case 2:
-                statusText = "已取消";
-                break;
-            default:
-                statusText = "未知状态";
-        }
-        response.setStatusText(statusText);
-        
-        // 客户信息（模拟数据）
-        response.setCustomerName("客户" + order.getUserId());
-        response.setCustomerPhone("138****" + String.format("%04d", orderId % 10000));
-        response.setCustomerEmail("customer" + order.getUserId() + "@example.com");
-        
-        // 支付信息（模拟数据）
-        if (order.getStatus() == 1) {
-            response.setPaymentMethod("支付宝");
-            response.setPaymentTime("2025-01-15 10:30:00");
-            response.setTransactionId("TXN" + orderId + System.currentTimeMillis());
-        }
-        
-        // 物流信息（模拟数据）
-        if (order.getStatus() == 1) {
-            response.setShippingAddress("北京市朝阳区某某街道123号");
-            response.setShippingStatus("已发货");
-            response.setTrackingNumber("SF" + orderId + "2025");
-        }
-        
-        // 订单备注
-        response.setRemark("订单详细报告 - 订单ID: " + orderId);
-        
-        // 4. 记录日志
-        System.out.println("订单详细报告查询 - 订单ID: " + orderId + 
-                         ", 状态: " + statusText + 
-                         ", 金额: " + order.getAmount());
-        
-        return response;
+        return statusList;
     }
     
     /**
-     * 订单详细报告响应对象
+     * 审核状态响应对象
      */
-    public static class OrderDetailReportResponse {
-        // 基础信息
-        private Long orderId;
-        private Long userId;
-        private String productName;
-        private BigDecimal amount;
-        private Integer status;
-        private String statusText;
-        private String createTime;
+    public static class CheckStatusResponse {
+        private String code;        // 状态码
+        private String displayName; // 显示名称
+        private Integer sortOrder;  // 排序
         
-        // 客户信息
-        private String customerName;
-        private String customerPhone;
-        private String customerEmail;
+        public CheckStatusResponse() {}
         
-        // 支付信息
-        private String paymentMethod;
-        private String paymentTime;
-        private String transactionId;
-        
-        // 物流信息
-        private String shippingAddress;
-        private String shippingStatus;
-        private String trackingNumber;
-        
-        // 备注
-        private String remark;
+        public CheckStatusResponse(String code, String displayName, Integer sortOrder) {
+            this.code = code;
+            this.displayName = displayName;
+            this.sortOrder = sortOrder;
+        }
         
         // Getters and Setters
-        public Long getOrderId() { return orderId; }
-        public void setOrderId(Long orderId) { this.orderId = orderId; }
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-        public String getProductName() { return productName; }
-        public void setProductName(String productName) { this.productName = productName; }
-        public BigDecimal getAmount() { return amount; }
-        public void setAmount(BigDecimal amount) { this.amount = amount; }
-        public Integer getStatus() { return status; }
-        public void setStatus(Integer status) { this.status = status; }
-        public String getStatusText() { return statusText; }
-        public void setStatusText(String statusText) { this.statusText = statusText; }
-        public String getCreateTime() { return createTime; }
-        public void setCreateTime(String createTime) { this.createTime = createTime; }
-        
-        public String getCustomerName() { return customerName; }
-        public void setCustomerName(String customerName) { this.customerName = customerName; }
-        public String getCustomerPhone() { return customerPhone; }
-        public void setCustomerPhone(String customerPhone) { this.customerPhone = customerPhone; }
-        public String getCustomerEmail() { return customerEmail; }
-        public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
-        
-        public String getPaymentMethod() { return paymentMethod; }
-        public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
-        public String getPaymentTime() { return paymentTime; }
-        public void setPaymentTime(String paymentTime) { this.paymentTime = paymentTime; }
-        public String getTransactionId() { return transactionId; }
-        public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
-        
-        public String getShippingAddress() { return shippingAddress; }
-        public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
-        public String getShippingStatus() { return shippingStatus; }
-        public void setShippingStatus(String shippingStatus) { this.shippingStatus = shippingStatus; }
-        public String getTrackingNumber() { return trackingNumber; }
-        public void setTrackingNumber(String trackingNumber) { this.trackingNumber = trackingNumber; }
-        
-        public String getRemark() { return remark; }
-        public void setRemark(String remark) { this.remark = remark; }
+        public String getCode() { return code; }
+        public void setCode(String code) { this.code = code; }
+        public String getDisplayName() { return displayName; }
+        public void setDisplayName(String displayName) { this.displayName = displayName; }
+        public Integer getSortOrder() { return sortOrder; }
+        public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
     }
 }

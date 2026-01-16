@@ -8,7 +8,7 @@ import java.util.*;
  * 对应前端菜单：资产管理 > 订单管理
  */
 @RestController
-@RequestMapping("/order-scfPc-web/ofOrder")
+@RequestMapping("/order-scfPc-web/of-order")
 public class OfOrderController {
 
     /**
@@ -16,7 +16,7 @@ public class OfOrderController {
      * 前端调用：orderApi.ofOrderController.pageOrder()
      * 菜单路径：资产管理 > 订单管理 (/orderManage)
      */
-    @PostMapping("/page")
+    @PostMapping("/pageOrder")
     public Result pageOrder(@RequestBody PageRequest request) {
         // 参数校验
         if (request.getCurrent() == null || request.getCurrent() < 1) {

@@ -11,151 +11,176 @@ import java.util.*;
 @RequestMapping("/order-scfPc-web/ofTransaction")
 public class OfTransactionController {
 
-    /**
-     * 分页查询融资交易列表
-     * 前端调用：orderApi.ofTransactionController.ofTransactionPage()
-     * 菜单路径：融资审核 (/standingBook)
-     */
+   
     @PostMapping("/page")
-    public Result page(@RequestBody PageRequest request) {
+    public TransactionResult queryPage(@RequestBody TransactionPageRequest request) {
         // 参数校验
         if (request.getCurrent() == null || request.getCurrent() < 1) {
-            return Result.error("页码不能为空且必须大于0");
+            return TransactionResult.error("页码不能为空且必须大于0");
         }
         if (request.getSize() == null || request.getSize() < 1 || request.getSize() > 100) {
-            return Result.error("每页大小必须在1-100之间");
+            return TransactionResult.error("每页大小必须在1-100之间");
         }
         
-        // 获取查询条件
-        Map<String, Object> queryCondition = request.getQueryCondition();
-        String ceAuditBelongRegion = queryCondition != null ? (String) queryCondition.get("ceAuditBelongRegion") : null;
-        String transactionNo = queryCondition != null ? (String) queryCondition.get("transactionNo") : null;
-        String sedCompanyName = queryCondition != null ? (String) queryCondition.get("sedCompanyName") : null;
-        String fuzzyBillPackName = queryCondition != null ? (String) queryCondition.get("fuzzyBillPackName") : null;
-        String frameContractName = queryCondition != null ? (String) queryCondition.get("frameContractName") : null;
-        String transactionType = queryCondition != null ? (String) queryCondition.get("transactionType") : null;
-        String mainFlowStatus = queryCondition != null ? (String) queryCondition.get("mainFlowStatus") : null;
-        
-        // 模拟分页数据
-        Map<String, Object> result = new HashMap<>();
+        // 模拟数据
         List<Map<String, Object>> records = new ArrayList<>();
+        int totalCount = 350;  // 增加总数到350条
+        int start = (request.getCurrent() - 1) * request.getSize();
         
-        // 模拟融资交易数据
-        int totalCount = 150; // 总记录数
-        int startIndex = (request.getCurrent() - 1) * request.getSize();
+        // 企业名称池
+        String[] companies = {
+            "华为技术有限公司", "腾讯科技有限公司", "阿里巴巴集团", "百度在线网络技术公司",
+            "京东集团", "美团科技有限公司", "字节跳动科技有限公司", "小米科技有限公司",
+            "比亚迪股份有限公司", "宁德时代新能源科技股份有限公司", "中兴通讯股份有限公司",
+            "海康威视数字技术股份有限公司", "格力电器股份有限公司", "美的集团股份有限公司",
+            "三一重工股份有限公司", "中国建筑集团有限公司", "中国中车股份有限公司",
+            "上海汽车集团股份有限公司", "中国石油化工集团公司", "中国移动通信集团公司"
+        };
         
-        for (int i = 1; i <= request.getSize(); i++) {
-            int transactionIndex = startIndex + i;
-            if (transactionIndex > totalCount) break;
+        // 产品类型池
+        String[] productTypes = {
+            "订单融资", "应收账款融资", "存货融资", "预付款融资", 
+            "保理融资", "票据融资", "信用贷款", "抵押贷款"
+        };
+        
+        // 银行池
+        String[] banks = {
+            "中国工商银行", "中国建设银行", "中国农业银行", "中国银行",
+            "交通银行", "招商银行", "浦发银行", "中信银行", "民生银行", "光大银行"
+        };
+        
+        for (int i = 1; i <= request.getSize() && (start + i) <= totalCount; i++) {
+            int idx = start + i;
+            Map<String, Object> tx = new HashMap<>();
             
-            Map<String, Object> transaction = new HashMap<>();
-            String txNo = "TX-2024-" + String.format("%06d", transactionIndex);
+            // 基础字段
+            tx.put("id", "TRANS_" + String.format("%010d", idx));
+            tx.put("transactionNo", "RZJY-2025-" + String.format("%08d", idx));
+            tx.put("sedCompanyName", companies[idx % companies.length]);
             
-            // 模拟融资申请编号过滤
-            if (transactionNo != null && !transactionNo.isEmpty()) {
-                if (!txNo.contains(transactionNo)) {
-                    continue;
-                }
+            // 产品信息
+            tx.put("productType", productTypes[idx % productTypes.length]);
+            tx.put("productName", productTypes[idx % productTypes.length] + "产品");
+            
+            // 金额字段 - 更真实的金额范围
+            double[] amountRanges = {100000, 500000, 1000000, 2000000, 5000000, 10000000};
+            double baseAmount = amountRanges[idx % amountRanges.length];
+            double amount = baseAmount + (idx * 8888.88);
+            tx.put("applyAmount", Math.round(amount * 100.0) / 100.0);  // 申请金额
+            tx.put("approvedAmount", Math.round(amount * 0.95 * 100.0) / 100.0);  // 批准金额(95%)
+            tx.put("usedAmount", Math.round(amount * 0.6 * 100.0) / 100.0);  // 已用金额(60%)
+            
+            // 利率和期限
+            double interestRate = 4.5 + (idx % 10) * 0.1;  // 4.5% - 5.4%
+            tx.put("interestRate", Math.round(interestRate * 100.0) / 100.0);
+            tx.put("loanTerm", (idx % 12 + 1) * 3);  // 3-36个月
+            tx.put("loanTermUnit", "月");
+            
+            // 状态字段 - 更多状态
+            String[] statuses = {"PENDING", "APPROVED", "REJECTED", "IN_REVIEW", "DISBURSED", "COMPLETED"};
+            String[] statusNames = {"待审核", "已批准", "已拒绝", "审核中", "已放款", "已完成"};
+            int statusIdx = idx % statuses.length;
+            tx.put("status", statuses[statusIdx]);
+            tx.put("statusName", statusNames[statusIdx]);
+            
+            // 银行信息
+            tx.put("bankName", banks[idx % banks.length]);
+            tx.put("bankCode", "BANK_" + String.format("%03d", idx % banks.length + 1));
+            
+            // 时间字段
+            int day = (idx % 28) + 1;
+            int hour = (idx % 24);
+            int minute = (idx % 60);
+            tx.put("applyTime", String.format("2025-01-%02d %02d:%02d:00", day, hour, minute));
+            tx.put("createTime", String.format("2025-01-%02d %02d:%02d:00", day, hour, minute));
+            
+            if (statusIdx >= 1) {  // 已审核的添加审核时间
+                tx.put("approveTime", String.format("2025-01-%02d %02d:%02d:00", day, (hour + 2) % 24, minute));
             }
             
-            // 确定融资类型（循环使用三种类型）
-            String txType = transactionIndex % 3 == 0 ? "ORDER" : (transactionIndex % 3 == 1 ? "ARRIVAL" : "DEALER");
-            String txTypeDisplayName = txType.equals("ORDER") ? "订单融资" : (txType.equals("ARRIVAL") ? "到货融资" : "经销商融资");
-            
-            // 模拟融资类型过滤
-            if (transactionType != null && !transactionType.isEmpty()) {
-                if (!txType.equals(transactionType)) {
-                    continue;
-                }
+            if (statusIdx >= 4) {  // 已放款的添加放款时间
+                tx.put("disburseTime", String.format("2025-01-%02d %02d:%02d:00", day, (hour + 3) % 24, minute));
             }
             
-            // 确定审核状态（循环使用多种状态）
-            String flowStatus = transactionIndex % 4 == 0 ? "PENDING" : 
-                               (transactionIndex % 4 == 1 ? "APPROVED" : 
-                               (transactionIndex % 4 == 2 ? "REJECTED" : "PROCESSING"));
-            String flowStatusDisplayName = flowStatus.equals("PENDING") ? "待审核" : 
-                                          (flowStatus.equals("APPROVED") ? "已通过" : 
-                                          (flowStatus.equals("REJECTED") ? "已拒绝" : "审核中"));
+            // 业务员和审核人
+            tx.put("salesPerson", "业务员" + (idx % 20 + 1));
+            tx.put("approver", statusIdx >= 1 ? "审核员" + (idx % 10 + 1) : null);
             
-            // 模拟审核状态过滤
-            if (mainFlowStatus != null && !mainFlowStatus.isEmpty()) {
-                if (!flowStatus.equals(mainFlowStatus)) {
-                    continue;
-                }
+            // 备注
+            if (statusIdx == 2) {  // 拒绝状态添加拒绝原因
+                String[] rejectReasons = {"资质不符", "额度不足", "风险过高", "资料不全"};
+                tx.put("remark", rejectReasons[idx % rejectReasons.length]);
+            } else {
+                tx.put("remark", "");
             }
             
-            // 确定融资企业名称
-            String companyName = "融资企业" + (transactionIndex % 10 + 1) + "有限公司";
-            
-            // 模拟融资企业名称过滤
-            if (sedCompanyName != null && !sedCompanyName.isEmpty()) {
-                if (!companyName.contains(sedCompanyName)) {
-                    continue;
-                }
-            }
-            
-            // 确定所属组织
-            String belongRegion = "区域" + (transactionIndex % 5 + 1);
-            
-            // 模拟所属组织过滤
-            if (ceAuditBelongRegion != null && !ceAuditBelongRegion.isEmpty()) {
-                if (!belongRegion.contains(ceAuditBelongRegion)) {
-                    continue;
-                }
-            }
-            
-            transaction.put("id", "TRANS_" + transactionIndex);
-            transaction.put("transactionNo", txNo);
-            transaction.put("sedCompanyName", companyName);
-            transaction.put("billPackName", "单据包" + transactionIndex);
-            transaction.put("frameContractName", "框架合同" + transactionIndex);
-            transaction.put("ceAuditBelongRegion", belongRegion);
-            transaction.put("ceAuditUserName", "审核员" + (transactionIndex % 3 + 1));
-            
-            // 融资类型对象
-            Map<String, String> transactionTypeObj = new HashMap<>();
-            transactionTypeObj.put("dictParam", txType);
-            transactionTypeObj.put("displayName", txTypeDisplayName);
-            transaction.put("transactionType", transactionTypeObj);
-            transaction.put("transactionTypeDictParam", txType);
-            transaction.put("transactionTypeDisplayName", txTypeDisplayName);
-            
-            // 主流程状态对象
-            Map<String, String> mainFlowStatusObj = new HashMap<>();
-            mainFlowStatusObj.put("dictParam", flowStatus);
-            mainFlowStatusObj.put("displayName", flowStatusDisplayName);
-            transaction.put("mainFlowStatus", mainFlowStatusObj);
-            transaction.put("statusDictParam", flowStatus);
-            transaction.put("statusDisplayName", flowStatusDisplayName);
-            transaction.put("mainFlowStatusParam", flowStatus);
-            
-            // 交易状态对象
-            Map<String, String> tradeStatusObj = new HashMap<>();
-            tradeStatusObj.put("dictParam", "NORMAL");
-            tradeStatusObj.put("displayName", "正常");
-            transaction.put("tradeStatus", tradeStatusObj);
-            transaction.put("tradeStatusDictParam", "NORMAL");
-            transaction.put("tradeStatusDisplayName", "正常");
-            
-            // 其他字段
-            transaction.put("amount", 500000.00 + transactionIndex * 10000);
-            transaction.put("billPackNo", "BP-" + transactionIndex);
-            transaction.put("createTime", "2024-01-15 10:30:00");
-            transaction.put("updateTime", "2024-01-15 10:30:00");
-            
-            records.add(transaction);
+            records.add(tx);
         }
         
+        // 支持查询条件过滤
+        if (request.getQueryCondition() != null && !request.getQueryCondition().isEmpty()) {
+            records = filterRecords(records, request.getQueryCondition());
+        }
+        
+        Map<String, Object> result = new HashMap<>();
         result.put("records", records);
         result.put("total", totalCount);
         result.put("current", request.getCurrent());
         result.put("size", request.getSize());
         
-        return Result.success(result);
+        return TransactionResult.success(result);
+    }
+    
+    /**
+     * 根据查询条件过滤记录
+     */
+    private List<Map<String, Object>> filterRecords(List<Map<String, Object>> records, Map<String, Object> condition) {
+        List<Map<String, Object>> filtered = new ArrayList<>();
+        
+        for (Map<String, Object> record : records) {
+            boolean match = true;
+            
+            // 按企业名称过滤
+            if (condition.containsKey("sedCompanyName")) {
+                String name = (String) condition.get("sedCompanyName");
+                if (name != null && !name.isEmpty()) {
+                    String recordName = (String) record.get("sedCompanyName");
+                    if (!recordName.contains(name)) {
+                        match = false;
+                    }
+                }
+            }
+            
+            // 按状态过滤
+            if (condition.containsKey("status")) {
+                String status = (String) condition.get("status");
+                if (status != null && !status.isEmpty()) {
+                    if (!status.equals(record.get("status"))) {
+                        match = false;
+                    }
+                }
+            }
+            
+            // 按产品类型过滤
+            if (condition.containsKey("productType")) {
+                String productType = (String) condition.get("productType");
+                if (productType != null && !productType.isEmpty()) {
+                    if (!productType.equals(record.get("productType"))) {
+                        match = false;
+                    }
+                }
+            }
+            
+            if (match) {
+                filtered.add(record);
+            }
+        }
+        
+        return filtered;
     }
 
     // 内部类：分页请求参数
-    public static class PageRequest {
+    public static class TransactionPageRequest {
         private Integer current;
         private Integer size;
         private Map<String, Object> queryCondition;
@@ -186,21 +211,21 @@ public class OfTransactionController {
     }
 
     // 内部类：统一返回结果
-    public static class Result {
+    public static class TransactionResult {
         private Integer code;
         private String message;
         private Object data;
 
-        public static Result success(Object data) {
-            Result result = new Result();
+        public static TransactionResult success(Object data) {
+            TransactionResult result = new TransactionResult();
             result.code = 200;
             result.message = "success";
             result.data = data;
             return result;
         }
         
-        public static Result error(String message) {
-            Result result = new Result();
+        public static TransactionResult error(String message) {
+            TransactionResult result = new TransactionResult();
             result.code = 400;
             result.message = message;
             result.data = null;

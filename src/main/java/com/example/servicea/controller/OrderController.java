@@ -2,11 +2,17 @@ package com.example.servicea.controller;
 
 import com.example.common.dto.OrderDTO;
 import com.example.servicea.service.OrderServiceImpl;
+// 新增：引入测试用的数据模型类
+import com.example.servicea.dto.OrderExportDTO;
+import com.example.servicea.vo.OrderDetailVO;
+import com.example.servicea.pojo.OrderQueryPO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 订单控制器
@@ -488,5 +494,158 @@ public class OrderController {
         public void setDisplayName(String displayName) { this.displayName = displayName; }
         public Integer getSortOrder() { return sortOrder; }
         public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    }
+    
+    // ========== 新增接口：使用测试数据模型类 ==========
+    
+    /**
+     * 导出订单数据（使用 OrderExportDTO）
+     * 测试目的：验证分析程序能否识别 DTO 导出类的使用
+     * 前端调用：orderApi.exportOrders(query)
+     */
+    @PostMapping("/export")
+    public List<OrderExportDTO> exportOrders(@RequestBody OrderQueryPO query) {
+        System.out.println("导出订单 - 查询条件: " + query.getOrderNo());
+        
+        List<OrderExportDTO> exportList = new ArrayList<>();
+        
+        // 模拟导出数据
+        OrderExportDTO export1 = new OrderExportDTO();
+        export1.setOrderNo("ORD-2024-001");
+        export1.setOrderName("测试订单1");
+        export1.setAmount(new BigDecimal("10000.00"));
+        export1.setPaidAmount(new BigDecimal("5000.00"));
+        export1.setRemainingAmount(new BigDecimal("5000.00"));
+        export1.setStatus("已支付");
+        exportList.add(export1);
+        
+        OrderExportDTO export2 = new OrderExportDTO();
+        export2.setOrderNo("ORD-2024-002");
+        export2.setOrderName("测试订单2");
+        export2.setAmount(new BigDecimal("20000.00"));
+        export2.setPaidAmount(new BigDecimal("20000.00"));
+        export2.setRemainingAmount(new BigDecimal("0.00"));
+        export2.setStatus("已完成");
+        exportList.add(export2);
+        
+        return exportList;
+    }
+    
+    /**
+     * 获取订单详情（使用 OrderDetailVO）
+     * 测试目的：验证分析程序能否识别 VO 视图对象的使用
+     * 前端调用：orderApi.getOrderDetail(orderId)
+     */
+    @GetMapping("/detail/{orderId}")
+    public OrderDetailVO getOrderDetail(@PathVariable Long orderId) {
+        System.out.println("获取订单详情 - 订单ID: " + orderId);
+        
+        // 模拟订单详情数据
+        OrderDetailVO detail = new OrderDetailVO();
+        detail.setOrderNo("ORD-2024-" + orderId);
+        detail.setOrderName("测试订单详情");
+        detail.setAmount(new BigDecimal("15000.00"));
+        detail.setOrderStatus("APPROVED");
+        detail.setApprovalNode("财务审批");
+        detail.setHandler("张三");
+        detail.setCreateTime(LocalDateTime.now().minusDays(7));
+        detail.setUpdateTime(LocalDateTime.now());
+        
+        return detail;
+    }
+    
+    /**
+     * 查询订单列表（使用 OrderQueryPO 作为查询条件）
+     * 测试目的：验证分析程序能否识别 PO 持久化对象的使用
+     * 前端调用：orderApi.queryOrders(query)
+     */
+    @PostMapping("/query")
+    public List<OrderDetailVO> queryOrders(@RequestBody OrderQueryPO query) {
+        System.out.println("查询订单列表 - 订单号: " + query.getOrderNo() + 
+                         ", 金额: " + query.getAmount() +
+                         ", 状态: " + query.getStatus());
+        
+        List<OrderDetailVO> resultList = new ArrayList<>();
+        
+        // 模拟查询结果
+        for (int i = 1; i <= 3; i++) {
+            OrderDetailVO detail = new OrderDetailVO();
+            detail.setOrderNo("ORD-2024-00" + i);
+            detail.setOrderName("查询结果订单" + i);
+            detail.setAmount(new BigDecimal("10000.00").multiply(new BigDecimal(i)));
+            detail.setOrderStatus("PENDING");
+            detail.setApprovalNode("初审");
+            detail.setHandler("李四");
+            detail.setCreateTime(LocalDateTime.now().minusDays(i));
+            detail.setUpdateTime(LocalDateTime.now());
+            resultList.add(detail);
+        }
+        
+        return resultList;
+    }
+    
+    /**
+     * 批量导出订单（使用多个 DTO 类型）
+     * 测试目的：验证分析程序能否识别多个数据模型类的组合使用
+     * 前端调用：orderApi.batchExport(queryList)
+     */
+    @PostMapping("/batch-export")
+    public BatchExportResponse batchExport(@RequestBody List<OrderQueryPO> queryList) {
+        System.out.println("批量导出订单 - 查询条件数量: " + queryList.size());
+        
+        BatchExportResponse response = new BatchExportResponse();
+        List<OrderExportDTO> exportList = new ArrayList<>();
+        List<OrderDetailVO> detailList = new ArrayList<>();
+        
+        // 处理每个查询条件
+        for (OrderQueryPO query : queryList) {
+            // 生成导出数据
+            OrderExportDTO export = new OrderExportDTO();
+            export.setOrderNo(query.getOrderNo());
+            export.setOrderName("批量导出订单");
+            export.setAmount(query.getAmount());
+            export.setPaidAmount(query.getActualAmount());
+            export.setRemainingAmount(query.getAmount().subtract(query.getActualAmount()));
+            export.setStatus(query.getStatus());
+            exportList.add(export);
+            
+            // 生成详情数据
+            OrderDetailVO detail = new OrderDetailVO();
+            detail.setOrderNo(query.getOrderNo());
+            detail.setOrderName("批量导出订单详情");
+            detail.setAmount(query.getAmount());
+            detail.setOrderStatus(query.getStatus());
+            detail.setApprovalNode("批量审批");
+            detail.setHandler("系统");
+            detail.setCreateTime(query.getPayTime());
+            detail.setUpdateTime(query.getCompleteTime());
+            detailList.add(detail);
+        }
+        
+        response.setExportList(exportList);
+        response.setDetailList(detailList);
+        response.setTotalCount(exportList.size());
+        response.setExportTime(LocalDateTime.now());
+        
+        return response;
+    }
+    
+    /**
+     * 批量导出响应对象
+     */
+    public static class BatchExportResponse {
+        private List<OrderExportDTO> exportList;
+        private List<OrderDetailVO> detailList;
+        private Integer totalCount;
+        private LocalDateTime exportTime;
+        
+        public List<OrderExportDTO> getExportList() { return exportList; }
+        public void setExportList(List<OrderExportDTO> exportList) { this.exportList = exportList; }
+        public List<OrderDetailVO> getDetailList() { return detailList; }
+        public void setDetailList(List<OrderDetailVO> detailList) { this.detailList = detailList; }
+        public Integer getTotalCount() { return totalCount; }
+        public void setTotalCount(Integer totalCount) { this.totalCount = totalCount; }
+        public LocalDateTime getExportTime() { return exportTime; }
+        public void setExportTime(LocalDateTime exportTime) { this.exportTime = exportTime; }
     }
 }

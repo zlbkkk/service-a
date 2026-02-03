@@ -101,4 +101,58 @@ public interface OfTransactionMapper {
     List<Map<String, Object>> selectPendingConfirmList(
             @Param("companyId") Long companyId,
             @Param("confirmType") String confirmType);
+
+    // ========== 以下方法对应前端 API 调用 ==========
+
+    /**
+     * 分页查询交易列表
+     * 对应前端: /ofTransaction/page
+     * 
+     * @param params 查询参数
+     * @return 交易列表分页数据
+     */
+    List<Map<String, Object>> page(@Param("params") Map<String, Object> params);
+
+    /**
+     * 获取融资汇总信息
+     * 对应前端: /ofTransaction/getTransactionSumInfo
+     * 
+     * @return 融资汇总信息
+     */
+    Map<String, Object> getTransactionSumInfo();
+
+    /**
+     * 获取交易详情
+     * 对应前端: /ofTransaction/getTransactionDetail
+     * 
+     * @param transactionNo 交易编号
+     * @return 交易详情
+     */
+    Map<String, Object> getTransactionDetail(@Param("transactionNo") String transactionNo);
+
+    /**
+     * 获取供应商上一次回款账户信息
+     * 对应前端: /ofTransaction/getSpyLastReturnAccount
+     * 
+     * @return 回款账户信息
+     */
+    Map<String, Object> getSpyLastReturnAccount();
+
+    /**
+     * 更新融资信息
+     * 对应前端: /ofTransaction/updateTransactionInfo
+     * 
+     * @param transactionInfo 融资信息
+     * @return 影响行数
+     */
+    int updateTransactionInfo(@Param("info") Map<String, Object> transactionInfo);
+
+    /**
+     * 批量删除交易
+     * 对应前端: /ofTransaction/batchDel
+     * 
+     * @param transactionNos 交易编号列表
+     * @return 影响行数
+     */
+    int batchDel(@Param("transactionNos") List<String> transactionNos);
 }

@@ -206,6 +206,32 @@ public class OrderServiceImpl implements OrderService {
     }
     
     /**
+     * 【新增 Dubbo 方法实现】获取订单状态变更历史
+     *
+     * 场景说明：
+     * - 对应 common-api 中新增的 OrderService.getOrderStatusHistory 方法
+     * - 模拟真实项目中在 Provider 侧新增一个查询方法，但暂时还没有消费方接入
+     * - 返回固定的状态流转文案，便于分析系统识别“新增方法”而不受复杂逻辑干扰
+     *
+     * @param orderId 订单ID
+     * @return 订单状态变更历史描述
+     */
+    @Override
+    public String getOrderStatusHistory(Long orderId) {
+        OrderDTO order = getOrderById(orderId);
+        if (order == null) {
+            return "订单不存在";
+        }
+
+        // 模拟一段简单的状态变更历史
+        // 为了突出“新增方法”本身，这里不引入额外依赖或数据库操作
+        return String.format(
+            "订单 %s 的状态历史：已创建 -> 待支付 -> 已支付",
+            order.getOrderNumber()
+        );
+    }
+    
+    /**
      * 异步发送订单事件消息到 RabbitMQ
      * 模拟真实项目中的消息队列使用场景
      * 

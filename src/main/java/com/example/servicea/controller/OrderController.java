@@ -124,13 +124,16 @@ public class OrderController {
      * 前端页面：资产管理 > 订单管理 (orderManage.vue)
      * 前端调用：orderApi.ofOrderController.getOrderSummary()
      * 
-     * 修改说明：
-     * 1. 增加数据验证逻辑
-     * 2. 增加日期范围校验
-     * 3. 增加缓存查询逻辑
-     * 4. 增加异常处理
-     * 5. 增加日志记录
-     * 6. 增加数据统计维度（按状态分组）
+     * 【修改记录 - 2026-02-28】
+     * 真实案例参考：提交 21700b39 - feat(S26-174): 更正校验判断，修改方法名
+     * 
+     * 本次修改内容：
+     * 1. 修改查询逻辑：增加订单类型过滤（orderType）
+     * 2. 修改查询逻辑：增加融资状态过滤（financeStatus）
+     * 3. 修改返回值：增加融资相关统计字段
+     * 4. 修改返回值：增加订单类型分组统计
+     * 5. 优化校验逻辑：更正日期范围校验判断
+     * 6. 优化缓存策略：增加订单类型和融资状态到缓存Key
      */
     @PostMapping("/summary")
     public OrderSummaryResponse getOrderSummary(@RequestBody OrderSummaryRequest request) {
@@ -139,15 +142,20 @@ public class OrderController {
             throw new IllegalArgumentException("请求参数不能为空");
         }
         
-        // 2. 日期范围校验
+        // 2. 日期范围校验（修改：更正校验判断逻辑）
         if (request.getQueryStartDay() != null && request.getQueryEndDay() != null) {
-            // 校验日期格式和范围
+            // 修改前：简单的字符串比较
+            // 修改后：增加日期格式验证和更严格的范围检查
+            if (!isValidDateFormat(request.getQueryStartDay()) || 
+                !isValidDateFormat(request.getQueryEndDay())) {
+                throw new IllegalArgumentException("日期格式错误，请使用 yyyy-MM-dd 格式");
+            }
             if (request.getQueryStartDay().compareTo(request.getQueryEndDay()) > 0) {
                 throw new IllegalArgumentException("开始日期不能大于结束日期");
             }
         }
         
-        // 3. 构建查询条件日志
+        // 3. 构建查询条件日志（修改：增加新的查询条件）
         StringBuilder queryLog = new StringBuilder("订单汇总查询 - ");
         if (request.getFuzzySourceOrderNo() != null) {
             queryLog.append("订单号:").append(request.getFuzzySourceOrderNo()).append(", ");
@@ -158,60 +166,121 @@ public class OrderController {
         if (request.getSellerCompanyId() != null) {
             queryLog.append("卖方公司ID:").append(request.getSellerCompanyId()).append(", ");
         }
+        // 新增：订单类型和融资状态
+        if (request.getOrderType() != null) {
+            queryLog.append("订单类型:").append(request.getOrderType()).append(", ");
+        }
+        if (request.getFinanceStatus() != null) {
+            queryLog.append("融资状态:").append(request.getFinanceStatus()).append(", ");
+        }
         System.out.println(queryLog.toString());
         
-        // 4. 模拟缓存查询（实际项目中会查询Redis）
+        // 4. 模拟缓存查询（修改：缓存Key包含新的查询条件）
         String cacheKey = generateCacheKey(request);
         System.out.println("缓存Key: " + cacheKey);
         
-        // 5. 模拟数据库查询订单汇总数据
+        // 5. 模拟数据库查询订单汇总数据（修改：根据新条件过滤）
         OrderSummaryResponse response = new OrderSummaryResponse();
         
-        // 基础统计
-        response.setSumCount(100);
-        response.setSumAmount(new BigDecimal("1000000.00"));
-        response.setApplySumCount(50);
-        response.setApplySumAmount(new BigDecimal("500000.00"));
+        // 基础统计（修改：根据订单类型和融资状态调整数据）
+        int totalCount = 100;
+        BigDecimal totalAmount = new BigDecimal("1000000.00");
         
-        // 6. 新增：按状态分组统计
-        response.setPendingCount(30);
-        response.setPendingAmount(new BigDecimal("300000.00"));
-        response.setPaidCount(50);
-        response.setPaidAmount(new BigDecimal("500000.00"));
-        response.setCancelledCount(20);
-        response.setCancelledAmount(new BigDecimal("200000.00"));
+        // 根据订单类型过滤
+        if (request.getOrderType() != null) {
+            if ("PURCHASE".equals(request.getOrderType())) {
+                totalCount = 60;
+                totalAmount = new BigDecimal("600000.00");
+            } else if ("SALE".equals(request.getOrderType())) {
+                totalCount = 40;
+                totalAmount = new BigDecimal("400000.00");
+            }
+        }
         
-        // 7. 新增：时间范围统计
+        // 根据融资状态过滤
+        if (request.getFinanceStatus() != null) {
+            if ("FINANCED".equals(request.getFinanceStatus())) {
+                totalCount = (int)(totalCount * 0.5);
+                totalAmount = totalAmount.multiply(new BigDecimal("0.5"));
+            } else if ("NOT_FINANCED".equals(request.getFinanceStatus())) {
+                totalCount = (int)(totalCount * 0.3);
+                totalAmount = totalAmount.multiply(new BigDecimal("0.3"));
+            }
+        }
+        
+        response.setSumCount(totalCount);
+        response.setSumAmount(totalAmount);
+        response.setApplySumCount((int)(totalCount * 0.5));
+        response.setApplySumAmount(totalAmount.multiply(new BigDecimal("0.5")));
+        
+        // 6. 按状态分组统计
+        response.setPendingCount((int)(totalCount * 0.3));
+        response.setPendingAmount(totalAmount.multiply(new BigDecimal("0.3")));
+        response.setPaidCount((int)(totalCount * 0.5));
+        response.setPaidAmount(totalAmount.multiply(new BigDecimal("0.5")));
+        response.setCancelledCount((int)(totalCount * 0.2));
+        response.setCancelledAmount(totalAmount.multiply(new BigDecimal("0.2")));
+        
+        // 7. 时间范围统计
         if (request.getQueryStartDay() != null && request.getQueryEndDay() != null) {
             response.setQueryStartDay(request.getQueryStartDay());
             response.setQueryEndDay(request.getQueryEndDay());
             response.setDayCount(calculateDayCount(request.getQueryStartDay(), request.getQueryEndDay()));
         }
         
-        // 8. 新增：平均订单金额
+        // 8. 平均订单金额
         if (response.getSumCount() > 0) {
             BigDecimal avgAmount = response.getSumAmount().divide(
                 new BigDecimal(response.getSumCount()), 2, BigDecimal.ROUND_HALF_UP);
             response.setAvgOrderAmount(avgAmount);
         }
         
-        // 9. 记录查询结果日志
+        // 9. 新增：融资相关统计
+        response.setFinancedCount((int)(totalCount * 0.5));
+        response.setFinancedAmount(totalAmount.multiply(new BigDecimal("0.5")));
+        response.setNotFinancedCount((int)(totalCount * 0.3));
+        response.setNotFinancedAmount(totalAmount.multiply(new BigDecimal("0.3")));
+        response.setFinancingCount((int)(totalCount * 0.2));
+        response.setFinancingAmount(totalAmount.multiply(new BigDecimal("0.2")));
+        
+        // 10. 新增：按订单类型分组统计
+        response.setPurchaseOrderCount((int)(totalCount * 0.6));
+        response.setPurchaseOrderAmount(totalAmount.multiply(new BigDecimal("0.6")));
+        response.setSaleOrderCount((int)(totalCount * 0.4));
+        response.setSaleOrderAmount(totalAmount.multiply(new BigDecimal("0.4")));
+        
+        // 11. 记录查询结果日志（修改：增加新字段的日志）
         System.out.println("查询结果 - 总订单数: " + response.getSumCount() + 
                          ", 总金额: " + response.getSumAmount() +
-                         ", 平均金额: " + response.getAvgOrderAmount());
+                         ", 平均金额: " + response.getAvgOrderAmount() +
+                         ", 已融资订单数: " + response.getFinancedCount() +
+                         ", 采购订单数: " + response.getPurchaseOrderCount());
         
         return response;
     }
     
     /**
-     * 生成缓存Key
+     * 验证日期格式（新增方法）
+     */
+    private boolean isValidDateFormat(String date) {
+        if (date == null || date.isEmpty()) {
+            return false;
+        }
+        // 简单验证 yyyy-MM-dd 格式
+        return date.matches("\\d{4}-\\d{2}-\\d{2}");
+    }
+    
+    /**
+     * 生成缓存Key（修改：增加订单类型和融资状态）
      */
     private String generateCacheKey(OrderSummaryRequest request) {
         return "order:summary:" + 
                (request.getBuyerCompanyId() != null ? request.getBuyerCompanyId() : "all") + ":" +
                (request.getSellerCompanyId() != null ? request.getSellerCompanyId() : "all") + ":" +
                (request.getQueryStartDay() != null ? request.getQueryStartDay() : "all") + ":" +
-               (request.getQueryEndDay() != null ? request.getQueryEndDay() : "all");
+               (request.getQueryEndDay() != null ? request.getQueryEndDay() : "all") + ":" +
+               (request.getOrderType() != null ? request.getOrderType() : "all") + ":" +
+               (request.getFinanceStatus() != null ? request.getFinanceStatus() : "all");
     }
     
     /**
@@ -229,6 +298,7 @@ public class OrderController {
     
     /**
      * 订单汇总请求对象
+     * 修改：增加订单类型和融资状态字段
      */
     public static class OrderSummaryRequest {
         private String fuzzySourceOrderNo;
@@ -237,6 +307,9 @@ public class OrderController {
         private String fuzzyContractNo;
         private String queryStartDay;
         private String queryEndDay;
+        // 新增字段
+        private String orderType;        // 订单类型：PURCHASE=采购订单, SALE=销售订单
+        private String financeStatus;    // 融资状态：FINANCED=已融资, NOT_FINANCED=未融资, FINANCING=融资中
         
         public String getFuzzySourceOrderNo() { return fuzzySourceOrderNo; }
         public void setFuzzySourceOrderNo(String fuzzySourceOrderNo) { this.fuzzySourceOrderNo = fuzzySourceOrderNo; }
@@ -250,14 +323,15 @@ public class OrderController {
         public void setQueryStartDay(String queryStartDay) { this.queryStartDay = queryStartDay; }
         public String getQueryEndDay() { return queryEndDay; }
         public void setQueryEndDay(String queryEndDay) { this.queryEndDay = queryEndDay; }
+        public String getOrderType() { return orderType; }
+        public void setOrderType(String orderType) { this.orderType = orderType; }
+        public String getFinanceStatus() { return financeStatus; }
+        public void setFinanceStatus(String financeStatus) { this.financeStatus = financeStatus; }
     }
     
     /**
      * 订单汇总响应对象
-     * 新增字段：
-     * - 按状态分组统计（待支付、已支付、已取消）
-     * - 时间范围信息
-     * - 平均订单金额
+     * 修改：增加融资相关统计和订单类型分组统计字段
      */
     public static class OrderSummaryResponse {
         private Integer sumCount;
@@ -265,7 +339,7 @@ public class OrderController {
         private Integer applySumCount;
         private BigDecimal applySumAmount;
         
-        // 新增：按状态分组统计
+        // 按状态分组统计
         private Integer pendingCount;      // 待支付订单数
         private BigDecimal pendingAmount;  // 待支付金额
         private Integer paidCount;         // 已支付订单数
@@ -273,13 +347,27 @@ public class OrderController {
         private Integer cancelledCount;    // 已取消订单数
         private BigDecimal cancelledAmount; // 已取消金额
         
-        // 新增：时间范围信息
+        // 时间范围信息
         private String queryStartDay;
         private String queryEndDay;
         private Integer dayCount;          // 查询天数
         
-        // 新增：平均订单金额
+        // 平均订单金额
         private BigDecimal avgOrderAmount;
+        
+        // 新增：融资相关统计
+        private Integer financedCount;        // 已融资订单数
+        private BigDecimal financedAmount;    // 已融资金额
+        private Integer notFinancedCount;     // 未融资订单数
+        private BigDecimal notFinancedAmount; // 未融资金额
+        private Integer financingCount;       // 融资中订单数
+        private BigDecimal financingAmount;   // 融资中金额
+        
+        // 新增：按订单类型分组统计
+        private Integer purchaseOrderCount;      // 采购订单数
+        private BigDecimal purchaseOrderAmount;  // 采购订单金额
+        private Integer saleOrderCount;          // 销售订单数
+        private BigDecimal saleOrderAmount;      // 销售订单金额
         
         public Integer getSumCount() { return sumCount; }
         public void setSumCount(Integer sumCount) { this.sumCount = sumCount; }
@@ -312,6 +400,28 @@ public class OrderController {
         
         public BigDecimal getAvgOrderAmount() { return avgOrderAmount; }
         public void setAvgOrderAmount(BigDecimal avgOrderAmount) { this.avgOrderAmount = avgOrderAmount; }
+        
+        public Integer getFinancedCount() { return financedCount; }
+        public void setFinancedCount(Integer financedCount) { this.financedCount = financedCount; }
+        public BigDecimal getFinancedAmount() { return financedAmount; }
+        public void setFinancedAmount(BigDecimal financedAmount) { this.financedAmount = financedAmount; }
+        public Integer getNotFinancedCount() { return notFinancedCount; }
+        public void setNotFinancedCount(Integer notFinancedCount) { this.notFinancedCount = notFinancedCount; }
+        public BigDecimal getNotFinancedAmount() { return notFinancedAmount; }
+        public void setNotFinancedAmount(BigDecimal notFinancedAmount) { this.notFinancedAmount = notFinancedAmount; }
+        public Integer getFinancingCount() { return financingCount; }
+        public void setFinancingCount(Integer financingCount) { this.financingCount = financingCount; }
+        public BigDecimal getFinancingAmount() { return financingAmount; }
+        public void setFinancingAmount(BigDecimal financingAmount) { this.financingAmount = financingAmount; }
+        
+        public Integer getPurchaseOrderCount() { return purchaseOrderCount; }
+        public void setPurchaseOrderCount(Integer purchaseOrderCount) { this.purchaseOrderCount = purchaseOrderCount; }
+        public BigDecimal getPurchaseOrderAmount() { return purchaseOrderAmount; }
+        public void setPurchaseOrderAmount(BigDecimal purchaseOrderAmount) { this.purchaseOrderAmount = purchaseOrderAmount; }
+        public Integer getSaleOrderCount() { return saleOrderCount; }
+        public void setSaleOrderCount(Integer saleOrderCount) { this.saleOrderCount = saleOrderCount; }
+        public BigDecimal getSaleOrderAmount() { return saleOrderAmount; }
+        public void setSaleOrderAmount(BigDecimal saleOrderAmount) { this.saleOrderAmount = saleOrderAmount; }
     }
     
     /**
